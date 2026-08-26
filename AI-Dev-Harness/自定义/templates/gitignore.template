@@ -1,0 +1,19 @@
+# 运行状态
+.codex-run/
+.script-test/
+
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+build/
+coverage/
+
+# 环境与敏感文件
+.env
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
