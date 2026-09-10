@@ -1,33 +1,63 @@
+# ============================================================
+# 通用项目工作区 — 仓库级忽略规则
+#
+# 原则：只挡「绝对不该进仓库」的东西（系统垃圾 / 编辑器缓存 / 密钥 /
+#       依赖目录 / 构建产物 / 本机运行时状态）。
+#       文档、图片、方案、参考资料一律放行，不在这里忽略。
+# 项目专属规则请写在该项目自己的 .gitignore 里，例如：
+#       我的项目\<项目名>\.gitignore
+# 验证某条规则是否真的生效：git check-ignore -v <路径>
+# ============================================================
 
-## 2、.gitignore 完整模板
-新建文本文件，文件名 **`.gitignore`**（注意前面有个点，没有后缀），放在项目根目录
-```gitignore
-# ================= Windows系统垃圾文件 =================
+# ---------- 操作系统垃圾文件 ----------
 Thumbs.db
 Desktop.ini
-*.tmp
-*.swp
+.DS_Store
+*~
 
-# ================= VSCode 编辑器配置缓存 =================
+# ---------- 编辑器 / IDE ----------
 .vscode/
-*.code‑workspace
+.idea/
+*.swp
+*.swo
+*.tmp
+*.code-workspace
 
-# ================= 日志文件 =================
+# ---------- 日志 ----------
 *.log
 
-# ================= 压缩包、临时导出文件 =================
-*.zip
-*.rar
-*.7z
-*.pdf
-*.docx
+# ---------- 密钥与本地私有配置 ----------
+.env
+.env.*
+!.env.example
+*.local
 
-# ================= 编译、生成输出文件夹 =================
+# ---------- 依赖目录 ----------
+node_modules/
+venv/
+__pycache__/
+
+# ---------- 构建产物与缓存 ----------
+dist/
 build/
 out/
-bin/
-obj/
+coverage/
+test-results/
+*.tsbuildinfo
+.codex-run/
+.script-test/
 
-# ================= 隐藏临时文件 =================
-*~
-.DS_Store
+# ---------- AI 助手运行时状态（本机私有，不共享） ----------
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
+.claude/assistant-daemon-state.json
+.claude/agent-registry.json
+.claude/first-run
+.claude/agent-memory-local/
+.claude/routines/.state/
+.claude/worktrees/
+.claude/checkpoints/
+.claude/mailbox/
+
+# ---------- 嵌套的独立 git 仓库 ----------
+DevPilot-dev/devpilot/
