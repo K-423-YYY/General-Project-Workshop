@@ -11,6 +11,14 @@ description: 技能体检与冲突检测：扫描技能库，检测同名 / 职�
 - 用户主动说「检查一下我的技能有没有冲突」。
 
 ## 执行步骤
+0. **先刷新技能索引**（幂等，1 秒）：
+   ```powershell
+   node ..\AI-Dev-Harness\自定义\scripts\list-skills.mjs --update
+   node ..\AI-Dev-Harness\自定义\scripts\list-skills.mjs --check
+   ```
+   为什么：新增/改动技能后索引会过期；这一步顺手把索引刷新，避免下次自检报"索引漂移"。
+   批量体检时**先看索引**（`list-skills.mjs`，约 2 KB）做初筛，只有冲突嫌疑的技能才通读正文 ——
+   不要把 23 个 `SKILL.md` 全量读进来（正文合计约 244 KB）。
 1. 扫描 `自定义\skills\` 下所有目录中的 `SKILL.md`，逐个读取其 `name / description / 适用场景 / 规则 / 调用顺序`。
 2. 逐一对比，检测四类冲突：
    - 同名 / 近名；

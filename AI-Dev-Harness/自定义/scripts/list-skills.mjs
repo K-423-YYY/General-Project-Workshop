@@ -15,6 +15,8 @@
  *   node list-skills.mjs --update        把索引写回 自定义\skills\README.md 的标记区
  *   node list-skills.mjs --check         校验 README 里的索引与现状一致（漂移退 1）
  *   node list-skills.mjs --max-desc 60   说明列截断长度（默认 46）
+ *   node list-skills.mjs --path <技能>    只输出该技能 SKILL.md 的路径（技能名或目录名）
+ *   node list-skills.mjs --show <技能>    通读**全文**（"确认要用了"之后就走这条）
  *
  * 退出码：0 正常 / 1 漂移（--check） / 2 用法或环境错误
  * ============================================================
@@ -54,13 +56,15 @@ export function sameIndex(a, b) {
 }
 
 function parseArgs(argv) {
-  const o = { json: false, update: false, check: false, maxDesc: 46 };
+  const o = { json: false, update: false, check: false, maxDesc: 46, show: null, pathOnly: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--json") o.json = true;
     else if (a === "--update") o.update = true;
     else if (a === "--check") o.check = true;
     else if (a === "--max-desc") o.maxDesc = Number(argv[++i]) || 46;
+    else if (a === "--show") o.show = argv[++i] ?? "";
+    else if (a === "--path") o.pathOnly = argv[++i] ?? "";
     else if (a === "--help" || a === "-h") o.help = true;
     else throw new Error(`未知参数：${a}（--help 看用法）`);
   }
@@ -149,7 +153,7 @@ function main() {
     return 2;
   }
   if (args.help) {
-    process.stdout.write("用法：node list-skills.mjs [--json] [--update] [--check] [--max-desc N]\n");
+    process.stdout.write("用法：node list-skills.mjs [--json] [--update] [--check] [--max-desc N] [--path <技能>] [--show <技能>]\n");
     return 0;
   }
   if (!fs.existsSync(SKILLS_DIR)) {
@@ -160,6 +164,35 @@ function main() {
   const rows = scan();
   const body = render(rows, args.maxDesc);
   const indexBytes = Buffer.byteLength(body, "utf8");
+
+  // ── 先"检索到"，再"通读全文"：这两条就是"发现要用某个技能"之后的确定路径
+  if (args.pathOnly !== null || args.show !== null) {
+    const want = (args.pathOnly !== null ? args.pathOnly : args.show).trim();
+    const key = want.toLowerCase();
+    const hit = rows.find((r) => r.dir.toLowerCase() === key || r.name.toLowerCase() === key);
+    if (!hit) {
+      const near = rows.filter((r) => r.dir.toLowerCase().includes(key) || key.includes(r.dir.toLowerCase()));
+      process.stderr.write(
+        `[list-skills] 没找到技能「${want}」\n` +
+          (near.length ? `  相近的：${near.map((r) => r.dir).join("、")}\n` : "") +
+          `  现有 ${rows.length} 个：${rows.map((r) => r.dir).join("、")}\n`
+      );
+      return 2;
+    }
+    const file = path.join(SKILLS_DIR, hit.dir, "SKILL.md");
+    if (!fs.existsSync(file)) { process.stderr.write(`[list-skills] 缺少文件：${file}\n`); return 2; }
+    if (args.pathOnly !== null) { process.stdout.write(file + "\n"); return 0; }
+    const text = fs.readFileSync(file, "utf8");
+    const size = Buffer.byteLength(text, "utf8");
+    if (size > 32 * 1024) {
+      process.stderr.write(
+        `[list-skills] 提示：${hit.dir} 正文 ${kb(size)} 偏大 —— 先用 --path 拿路径，` +
+          "再用 Read 的 offset/limit 分段读（多数情况读入口段就够）。\n"
+      );
+    }
+    process.stdout.write(text.endsWith("\n") ? text : text + "\n");
+    return 0;
+  }
 
   if (args.json) {
     process.stdout.write(JSON.stringify({

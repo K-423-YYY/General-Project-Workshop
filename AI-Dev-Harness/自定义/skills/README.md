@@ -38,6 +38,11 @@
 > 而一次项目最多用到 3~5 个。开局只读下面这张索引表（约 2 KB），选中后再读**那一个**技能正文；
 > 超大技能（如 `hatch-pet`）按需读它的 `references\`，不要整篇吞。
 > 打开索引的正式命令：`node AI-Dev-Harness\自定义\scripts\list-skills.mjs`
+>
+> **要用某个技能时**：`node AI-Dev-Harness\自定义\scripts\list-skills.mjs --show <技能名>` 会**通读它的全文**
+> （`--path <技能名>` 只给路径，适合对超大技能用分段读）。
+> **加/改技能之后**：跑一次 `... list-skills.mjs --update` 刷新索引（`--check` 验证是否漂移）。
+> 不刷新也不影响检索 —— 检索是**实时扫描目录**，下面这张表只是给人看、给自检比对的快照。
 
 <!-- skills-index:begin -->
 > 由 `自定义\scripts\list-skills.mjs` 生成，**不要手改**；改完技能跑 `--update`，`--check` 验证是否漂移。
@@ -60,7 +65,7 @@
 | `presentations` | Read, create or edit PowerPoint or Google Sli… | 16.9 KB |
 | `project-workflow` | 万能项目开发流程总控 skill，负责按模板编排完整项目流程并强制遵守执行标准。 | 3.0 KB |
 | `skeleton-building` | 按计划搭建项目骨架，只创建计划内目录和文件。 | 1.1 KB |
-| `skill-audit` | 技能体检与冲突检测：扫描技能库，检测同名 / 职责重叠 / 规则冲突 / 调用顺序冲突，并… | 1.5 KB |
+| `skill-audit` | 技能体检与冲突检测：扫描技能库，检测同名 / 职责重叠 / 规则冲突 / 调用顺序冲突，并… | 2.0 KB |
 | `spec` | SDD 规范驱动开发（SpecKite 风格）：把需求变成精简规范、再按验收标准逐项核对；… | 3.3 KB |
 | `spreadsheets` | Create, edit, analyze, and verify standalone … | 17.5 KB |
 | `task-execution` | 严格按项目计划书执行主任务，遵守改码方式与测试分层硬规则，长任务中断时恢复，发现偏离计划时… | 4.1 KB |
@@ -68,5 +73,5 @@
 | `template-creator` | Create or update a reusable personal Codex ar… | 18.6 KB |
 | `webapp-testing` | Toolkit for interacting with and testing loca… | 3.8 KB |
 
-（共 23 个技能；正文合计 243.7 KB —— **开局只读这张表即可**，选中后再读那一个技能）
+（共 23 个技能；正文合计 244.2 KB —— **开局只读这张表即可**，选中后再读那一个技能）
 <!-- skills-index:end -->
