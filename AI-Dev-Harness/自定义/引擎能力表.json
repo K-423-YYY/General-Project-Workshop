@@ -27,28 +27,28 @@
         "id": "codex-cli",
         "label": "Codex CLI",
         "kind": "cli",
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\codex.cmd",
+        "path": "%APPDATA%\\npm\\codex.cmd",
         "via": "PATH 上的 codex"
       },
       {
         "id": "claude-code",
         "label": "Claude Code（终端）",
         "kind": "cli",
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\claude.cmd",
+        "path": "%APPDATA%\\npm\\claude.cmd",
         "via": "PATH 上的 claude"
       },
       {
         "id": "claude-code-desktop",
         "label": "Claude Code（桌面端）",
         "kind": "desktop",
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\Claude",
+        "path": "%APPDATA%\\Claude",
         "via": "Claude 桌面应用数据目录"
       },
       {
         "id": "deepseek-harness",
         "label": "DeepSeek Harness (dsh)",
         "kind": "cli",
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\dsh.cmd",
+        "path": "%APPDATA%\\npm\\dsh.cmd",
         "via": "PATH 上的 dsh"
       },
       {
@@ -64,8 +64,8 @@
     ],
     "last": null,
     "default": "codex-cli",
-    "stateDir": "C:\\Users\\29137\\Desktop\\项目2\\AI自动化工具配置\\自建\\脚本\\General-Project-Workshop\\AI-Dev-Harness\\state",
-    "choiceFile": "C:\\Users\\29137\\Desktop\\项目2\\AI自动化工具配置\\自建\\脚本\\General-Project-Workshop\\AI-Dev-Harness\\state\\engine-choice.json",
+    "stateDir": "<工作区根>\\AI-Dev-Harness\\state",
+    "choiceFile": "<工作区根>\\AI-Dev-Harness\\state\\engine-choice.json",
     "resolver": "自定义/scripts/lib/engine-detect.mjs"
   },
   "_说明": [
@@ -149,7 +149,7 @@
       "desktop": {
         "installed": true,
         "evidence": "%APPDATA%/Claude",
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\Claude",
+        "path": "%APPDATA%\\Claude",
         "version": null,
         "mechanismSameAsTerminal": true,
         "effectiveOnlyInProjectDir": true,
@@ -160,7 +160,7 @@
       "probes": [],
       "detection": {
         "installed": true,
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\claude.cmd",
+        "path": "%APPDATA%\\npm\\claude.cmd",
         "via": "PATH 上的 claude",
         "kind": "cli",
         "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
@@ -342,7 +342,7 @@
         {
           "label": "hooks 顶层键存在",
           "valid": true,
-          "message": "2026-09-11T17:39:52.525529Z  WARN codex_core_plugins::startup_sync: git sync failed for curated plugin sync; falling back to GitHub HTTP error=git fetch curated plugins repo failed with status exit code: 128: fatal: unable to access 'https://github.com/openai/plugins.git/': Recv failure: Connection was reset",
+          "message": "fatal: Could not reset index file to revision 'refs/codex/curated-sync'.",
           "matched_expectation": true
         },
         {
@@ -468,13 +468,13 @@
         {
           "label": "★ 交付用配置片段整体合法",
           "valid": true,
-          "message": "2026-09-11T17:40:10.335832Z  WARN codex_core_plugins::manager: failed to warm featured plugin ids cache error=remote featured plugin request to https://chatgpt.com/backend-api/plugins/featured?platform=codex failed with status 401 Unauthorized: {\"detail\":\"Unauthorized\"}",
+          "message": "2026-09-11T19:06:05.082688Z  WARN codex_core_plugins::manifest: ignoring interface.defaultPrompt[0]: prompt must be at most 128 characters path=file:///%LOCALAPPDATA%/Temp/harness-codex-probe-home/.tmp/plugins/plugins/ngs-analysis/.codex-plugin/plugin.json",
           "matched_expectation": true
         }
       ],
       "detection": {
         "installed": true,
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\codex.cmd",
+        "path": "%APPDATA%\\npm\\codex.cmd",
         "via": "PATH 上的 codex",
         "kind": "cli",
         "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
@@ -613,7 +613,7 @@
       "patchVerification": {
         "appliedWithPatch": true,
         "absentWithoutPatch": true,
-        "label": "probe-marker-14892",
+        "label": "probe-marker-10200",
         "verdict": "verified-live"
       },
       "patchErrors": [
@@ -635,7 +635,7 @@
       ],
       "detection": {
         "installed": true,
-        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\dsh.cmd",
+        "path": "%APPDATA%\\npm\\dsh.cmd",
         "via": "PATH 上的 dsh",
         "kind": "cli",
         "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
@@ -658,7 +658,7 @@
         "supported": false,
         "confidence": "未查明",
         "configFile": "未查明",
-        "note": "本机没有该引擎（统一解析器已探过），本轮跳过实测；下面保留 2026-09-11 的实测结论"
+        "note": "本机没有该引擎（统一解析器已探过），本轮跳过实测；下面保留 2026-09-12 的实测结论"
       },
       "findings": [
         {
@@ -667,7 +667,7 @@
         },
         {
           "level": "warn",
-          "text": "本机没有 traecode-cli（统一解析器已探过）→ 本轮**跳过实测**；结论保留 2026-09-11 的实测值，已标注「未复验」。"
+          "text": "本机没有 traecode-cli（统一解析器已探过）→ 本轮**跳过实测**；结论保留 2026-09-12 的实测值，已标注「未复验」。"
         }
       ],
       "probes": [
@@ -691,13 +691,14 @@
       },
       "notRechecked": true,
       "lastVerified": {
-        "at": "2026-09-11",
+        "at": "2026-09-12",
         "version": null,
         "mechanism": {
           "kind": "unknown",
           "supported": false,
           "confidence": "未查明",
-          "configFile": "未查明"
+          "configFile": "未查明",
+          "note": "本机没有该引擎（统一解析器已探过），本轮跳过实测；下面保留 2026-09-12 的实测结论"
         },
         "patchVerification": null,
         "ruleAutoload": {
@@ -751,7 +752,7 @@
       "❌（未发现等价机制）",
       "⚠️ 未验证",
       "✅",
-      "本轮实测在机：C:\\Users\\29137\\AppData\\Roaming\\npm\\codex.cmd"
+      "本轮实测在机：%APPDATA%\\npm\\codex.cmd"
     ],
     "deepseek-harness": [
       "✅ AGENTS.md / CLAUDE.md（agent-instructions 行实测启用）+ U2 兜底",

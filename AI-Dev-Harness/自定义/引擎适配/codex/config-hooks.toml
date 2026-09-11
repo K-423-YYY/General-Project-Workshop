@@ -4,8 +4,9 @@
 # ★ 把下面 [hooks] 段**合并**进 ~/.codex/config.toml（不是覆盖整个文件）。
 #   若该文件已有 [hooks] 段，把事件数组里的元素追加进去。
 #
-# ★ 请把 <harness> 换成工作区的绝对路径，例如
-#     C:\Users\29137\Desktop\项目2\AI自动化工具配置\自建\脚本\General-Project-Workshop
+# ★ 请把 <harness> 换成**你自己机器上**的工作区绝对路径，例如
+#     D:\你的目录\General-Project-Workshop
+#   （这里故意不写死路径：本工作区可整体复制到任何电脑/目录/用户名）
 #   注意：TOML 里 Windows 路径要么用单引号字面串（如本文件），
 #   要么把每个反斜杠写成 \\（双引号串里 '\' 是转义符，会报错）。
 #

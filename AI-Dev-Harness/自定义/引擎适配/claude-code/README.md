@@ -63,7 +63,7 @@
 ## 四、怎么自查机制层到底生效没有
 
 ```powershell
-$H='C:\Users\29137\Desktop\项目2\AI自动化工具配置\自建\脚本\General-Project-Workshop'
+$H = (Get-Location).Path          # 在 本工作区根目录 下执行本段；路径不写死，换电脑也能用
 $P="$H\我的项目\<你的项目>"     # 换成实际项目目录
 
 # 1) 项目内机制层是否就位（settings.json + hooks 都在）

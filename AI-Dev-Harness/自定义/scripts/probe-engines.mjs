@@ -74,6 +74,40 @@ const ADAPTER_DIR = path.join(CUSTOM_DIR, "引擎适配");
 const TABLE_PATH = path.join(CUSTOM_DIR, "引擎能力表.json");
 const PROBE_DATE = "2026-09-12";
 
+/**
+ * 机器中立化：把"本机绝对路径"换成占位符后**才写进能力表**。
+ * 为什么要做：能力表是会被整体复制到别的电脑、甚至进仓库给人看的文件；
+ * 里面留着 C:\Users\<用户名>\... 既违反铁律「路径一律相对」，也等于把本机目录结构泄漏出去。
+ * 注意：终端里打印的仍是最新实测的真实路径（那是现场证据），只有落盘的表被中立化。
+ */
+function neutralizePaths(value) {
+  const home = os.homedir();
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rules = [
+    [process.env.APPDATA, "%APPDATA%"],
+    [process.env.LOCALAPPDATA, "%LOCALAPPDATA%"],
+    // ★ 顺序要紧：**更具体的前缀必须先替换**。工作区可能在桌面下（…\Desktop\<工作区>），
+    //   若先套 %USERPROFILE% 就会把工作区路径拆成 %USERPROFILE%\Desktop\…，反而更乱。
+    [path.resolve(HARNESS_ROOT, ".."), "<工作区根>"],
+    [HARNESS_ROOT, "<harness>"],
+    [path.join(home, "AppData", "Roaming"), "%APPDATA%"],
+    [path.join(home, "AppData", "Local"), "%LOCALAPPDATA%"],
+    [home, "%USERPROFILE%"],
+  ].filter(([from]) => typeof from === "string" && from);
+  // 证据里可能出现正斜杠形式（如 codex 报错文本里的 file:/// 路径），一并中立化
+  for (const [from, to] of [...rules]) {
+    const fwd = from.replace(/\\/g, "/");
+    if (fwd !== from) rules.push([fwd, to]);
+  }
+  const walk = (v) => {
+    if (typeof v === "string") return rules.reduce((s, [from, to]) => s.replace(new RegExp(esc(from), "gi"), to), v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(value);
+}
+
 /** 把本轮探测的结论落一行到 日志\06-引擎\engine-probe-<日期>.jsonl（只追加） */
 function logEngineProbe(engines, table, opts) {
   try {
@@ -958,7 +992,7 @@ function main() {
   const table = buildTable(engines, { installed, det });
 
   if (opts.json) {
-    process.stdout.write(JSON.stringify(table, null, 2) + "\n");
+    process.stdout.write(JSON.stringify(neutralizePaths(table), null, 2) + "\n");
   } else {
     process.stdout.write(`\n引擎能力探测（${PROBE_DATE}）\n${"─".repeat(64)}\n`);
     for (const e of engines) {
@@ -997,7 +1031,8 @@ function main() {
   }
 
   if (!opts.dryRun) {
-    safeWrite(TABLE_PATH, JSON.stringify(table, null, 2) + "\n");
+    // 落盘前做机器中立化：表会被复制/进仓库，不写死本机路径（终端里仍然打印真实路径）
+    safeWrite(TABLE_PATH, JSON.stringify(neutralizePaths(table), null, 2) + "\n");
     if (!opts.json) process.stdout.write(`已写入：${TABLE_PATH}\n`);
   }
   logEngineProbe(engines, table, opts);
