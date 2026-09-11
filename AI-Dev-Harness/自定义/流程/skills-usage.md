@@ -16,8 +16,8 @@
 6. local-verification：本地验证。
 7. task-execution：执行主任务。
 8. exception-handling：遇到异常时使用。
-9. git-delivery：git 集成、推送、远程验证。
-10. cleanup-and-final：清理、最终说明、用户确认。
+9. git-delivery：git 集成、本地提交与验证；**GitHub 同步只给步骤与命令，不代推**（用户明确要求才代做）。
+10. cleanup-and-final：清理（先清单 → 用户确认 → 执行 → 纯净度自检）、最终说明、用户确认。
 
 ### 2. 注意事项
 
