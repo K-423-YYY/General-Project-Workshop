@@ -2,9 +2,11 @@
  * guard-tools.mjs —— Read / Edit 工具的策略闸门
  * 第 2 批 · 机制层（核心）· 交付物 A4
  *
- * 只实现 G7 / G8，且**只警告、不拦截**（方案明确要求软化，避免打断合理工作）：
+ * 只实现 G7 / G8 / G12，且**只警告、不拦截**（方案明确要求软化，避免打断合理工作）：
  *   G7  Read  > 400 行的大文件，且本会话第 2 次「全读」→ 提示改用 offset/limit 或交给 Explore 子代理
  *   G8  同一文件第 8 次 Edit，且中途没跑过任何 L1 定向测试 → 提示「你大概在猜，先跑测试」
+ *   G12 Read 某个技能的 `SKILL.md` 且体积 > 8 KB → 提示「先看技能索引，别整篇吞」
+ *       （为什么需要它：G7 要第 2 次全读才响，而第一次把 86 KB 的 hatch-pet 读进来就已经亏了）
  *
  * 警告走 hookSpecificOutput.additionalContext 注入模型上下文，
  * **不设 permissionDecision**，因此不影响正常权限流程（不会替用户自动批准 Edit）。
@@ -29,9 +31,14 @@ import {
   LIMITS,
 } from "./lib/policy.mjs";
 import { FILES as LOG_FILES, appendJsonl, stampCompact } from "./lib/log-center.mjs";
+import fs from "node:fs";
 
 const BIG_FILE_LINES = LIMITS.bigFileLines; // 400
 const EDIT_REPEAT = LIMITS.editRepeat;       // 8
+/** G12：技能正文超过这个体积就不该"整篇读"（索引在 自定义\scripts\list-skills.mjs） */
+const SKILL_BIG_BYTES = 8 * 1024;
+/** 只认"技能目录下的 SKILL.md"，避免误伤普通文件 */
+const SKILL_MD_RE = /[\\/]skills[\\/][^\\/]+[\\/]SKILL\.md$/i;
 
 /**
  * 返回 `{ decision, rule }`：decision 是 warn 决定对象或 null，rule 是规则号（G7 / G8）。
@@ -48,6 +55,27 @@ function judge(ev, root, s) {
     // 带 offset / limit 的是分段读，正是我们鼓励的做法 —— 不计数也不警告
     const partial = ev.tool_input?.offset !== undefined || ev.tool_input?.limit !== undefined;
     if (partial) return { decision: null, rule: null };
+
+    // ── G12 技能正文整篇读（第一次就提醒，不等第二次）
+    if (SKILL_MD_RE.test(fp)) {
+      let size = 0;
+      try { size = fs.statSync(fp).size; } catch { /* 读不到大小就不判断 */ }
+      if (size > SKILL_BIG_BYTES) {
+        s.skillBigReads = s.skillBigReads ?? {};
+        const n = (s.skillBigReads[fp] = (s.skillBigReads[fp] ?? 0) + 1);
+        if (n === 1) {
+          return {
+            rule: "G12-skill-body-oversize",
+            decision: warn(
+              `这是技能正文，且体积 ${(size / 1024).toFixed(1)} KB，已超过 8 KB 的"整篇读"阈值：${fp}\n` +
+                "技能库有 23 个技能、正文合计约 246 KB —— 全量读是 6~8 万 token 级的浪费，而一次项目最多用 3~5 个。\n" +
+                "正确做法：① 先跑 `node AI-Dev-Harness\\自定义\\scripts\\list-skills.mjs` 看索引（约 2 KB，里面有每个技能干什么）；" +
+                "② 确认真要用它，再只读这一个技能的正文；③ 超大技能按需读它的 `references\\`（用 Read 的 offset/limit 分段），不要一次吞完。",
+            ),
+          };
+        }
+      }
+    }
 
     const info = countLines(fp);
     if (!info || info.truncated || info.lines <= BIG_FILE_LINES) return { decision: null, rule: null };

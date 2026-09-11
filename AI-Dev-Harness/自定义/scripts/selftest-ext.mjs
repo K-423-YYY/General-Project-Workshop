@@ -20,6 +20,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { loadLogCenter, resolveLogRoot } from "./lib/log-center.mjs";
 
@@ -351,6 +352,36 @@ async function main() {
   });
   check("引擎判定只有一份实现（probe-engines / env-doctor / 自检台 / _detect.ps1 都指向 engine-detect.mjs）",
     noResolver.length === 0, noResolver.map((f) => path.basename(f)).join("、"));
+
+  // ── 10. 技能索引（省 token 的第一道门）
+  section("【10】技能索引（扫技能只读摘要：list-skills.mjs）");
+  const listSkills = path.join(CUSTOM, "scripts", "list-skills.mjs");
+  check("自定义\\scripts\\list-skills.mjs 存在", exists(listSkills));
+  if (exists(listSkills)) {
+    const runLs = (arg) => spawnSync(process.execPath, [listSkills, ...(arg ? [arg] : ["--json"])], { encoding: "utf8" });
+    const js = runLs(null);
+    let idx = null;
+    try { idx = JSON.parse(js.stdout); } catch { /* 下面按失败处理 */ }
+    check("list-skills.mjs --json 能跑并且是合法 JSON", idx !== null, `status=${js.status} ${(js.stderr || "").trim()}`);
+    if (idx) {
+      const skillDirs = fs.readdirSync(path.join(CUSTOM, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory());
+      check(`索引条目数 = 技能目录数（${idx.count}）`, idx.count === skillDirs.length, `索引 ${idx.count} / 目录 ${skillDirs.length}`);
+      check(`索引体积 ${idx.indexBytes} B 未超预算 ${idx.indexBudgetBytes} B`, idx.indexBytes <= idx.indexBudgetBytes);
+      const noFm = idx.rows.filter((r) => r.noFrontmatter);
+      check("每个技能都有 frontmatter（name + description）", noFm.length === 0, noFm.map((r) => r.dir).join("、"));
+      check("索引展示的正文合计远大于索引本身（证明「只读摘要」确实省）",
+        idx.totalBytes > idx.indexBytes * 10, `正文 ${idx.totalBytes} B vs 索引 ${idx.indexBytes} B`);
+    }
+    const chk = runLs("--check");
+    check("skills\\README.md 里的索引与现状一致（--check）", chk.status === 0, `status=${chk.status} ${(chk.stdout || "").trim()}`);
+  }
+  // 规则层：硬规则正文里必须写明"技能只读摘要"
+  const rulesTpl = path.join(CUSTOM, "项目规则模板", "AGENTS.template.md");
+  check("规则模板里写明「技能只读摘要」（防全量读 skills）",
+    exists(rulesTpl) && /技能只读摘要/.test(fs.readFileSync(rulesTpl, "utf8")));
+  const guardTools = path.join(WORK_ROOT, ".claude", "hooks", "guard-tools.mjs");
+  check("guard-tools.mjs 含 G12 守门（技能正文超 8 KB 即提醒）",
+    exists(guardTools) && /G12-skill-body-oversize/.test(fs.readFileSync(guardTools, "utf8")));
 
   // ── 汇总
   process.stdout.write("\n" + "─".repeat(70) + "\n");
