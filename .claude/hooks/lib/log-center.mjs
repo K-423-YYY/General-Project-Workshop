@@ -263,6 +263,10 @@ export function appendLog(cat, { file, text = "", lines = null, logRoot, quiet =
   const body = lines ? lines.map((l) => `${l}\n`).join("") : String(text);
 
   try {
+    // 顺手把日志中心的 8 个分类目录建全（幂等）。
+    // 为什么：git 不跟踪空目录 —— 克隆下来的工作区里没有 日志\，若只建"本次要写的那一类"，
+    // 日志中心会长期处于残缺状态（自检也会因此报红）。ensureLayout 很便宜（8 次 mkdirSync，已存在则空转）。
+    ensureLayout(root);
     fs.mkdirSync(dir, { recursive: true });
     const rotated = rotateIfNeeded(target);
     fs.appendFileSync(target, body, "utf8");

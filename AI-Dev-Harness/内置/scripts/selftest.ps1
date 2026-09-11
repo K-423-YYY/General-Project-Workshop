@@ -104,6 +104,13 @@ $required = @(
 )
 
 # 注意：'.claude\...' 与 '日志\...' 是**工作区根**下的路径，其余都在 AI-Dev-Harness\ 下。
+# 全新克隆里 日志\ 可能还没被创建（git 不跟踪空目录）——日志中心本来就"用到即建"，
+# 所以核对清单前先做一次幂等初始化；这样"刚克隆、什么都没跑过"也不会假红。
+$logCli = Join-Path $HarnessRoot '自定义\scripts\lib\log-center.mjs'
+if ((Test-Path -LiteralPath $logCli) -and (Get-Command node -ErrorAction SilentlyContinue)) {
+  & node $logCli 'init' | Out-Null
+}
+
 $missing = @($required | Where-Object {
   $rel = $_
   if ($rel -like '.claude\*' -or $rel -like '日志\*') { $base = $WorkRoot } else { $base = $HarnessRoot }

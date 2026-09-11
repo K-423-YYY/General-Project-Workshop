@@ -316,9 +316,12 @@ check("真实 .claude/ 的文件清单没有变化（没多出 .bak / settings.j
   fs.readdirSync(realClaudeDir).sort().join(", "));
 check("真实 AI-Dev-Harness/state/model-profiles 未被写",
   fs.readdirSync(path.join(HARNESS, "state", "model-profiles")).filter((f) => /\.bak-/.test(f)).length === 0);
-check("真实 我的项目\\ 仍为空（本批没有往它写任何东西）",
-  exists(path.join(ROOT, "我的项目")) && fs.readdirSync(path.join(ROOT, "我的项目")).length === 0,
-  exists(path.join(ROOT, "我的项目")) ? fs.readdirSync(path.join(ROOT, "我的项目")).join(", ") : "(目录不存在)");
+  // 我的项目\ 现在带一个**骨架占位** .gitignore（让空目录能随仓库走 + 防止用户项目被误提交进 harness 仓库）。
+  // 断言据此放宽成"除了骨架文件，不许有测试残留" —— 保护意图（测试不往真实项目文件夹写内容）不变。
+  const realProjectEntries = exists(path.join(ROOT, "我的项目")) ? fs.readdirSync(path.join(ROOT, "我的项目")) : null;
+  check("真实 我的项目\\ 里只有骨架占位（没有测试残留）",
+    realProjectEntries !== null && realProjectEntries.every((f) => f === ".gitignore"),
+    realProjectEntries ? realProjectEntries.join(", ") : "(目录不存在)");
 
 // ───────────────────────────────────────────── 收尾
 console.log(`\n${"─".repeat(60)}`);

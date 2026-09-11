@@ -243,14 +243,17 @@ async function main() {
 
   // ── 6. 日志中心（第 2 段）
   section("【6】日志中心（工作区根 日志\\）");
-  const logRoot = resolveLogRoot({ workRoot: WORK_ROOT });
-  const categories = ["01-会话", "02-命令", "03-验证", "04-拦截", "05-清理", "06-引擎", "07-审计", "08-模型"];
-  const missingCats = categories.filter((c) => !exists(path.join(logRoot, c)));
-  check(`日志\\ 下 ${categories.length} 个分类子目录齐全`, missingCats.length === 0, missingCats.join("、"));
-  check("日志\\README.md 存在（每个子目录记什么、怎么检索）", exists(path.join(logRoot, "README.md")));
-  const lc = await loadLogCenter();
-  check(".claude\\hooks\\lib\\log-center.mjs（日志中心唯一实现）可加载", !!lc);
-  if (lc) {
+    const logRoot = resolveLogRoot({ workRoot: WORK_ROOT });
+    const categories = ["01-会话", "02-命令", "03-验证", "04-拦截", "05-清理", "06-引擎", "07-审计", "08-模型"];
+    const lc = await loadLogCenter();
+    check(".claude\\hooks\\lib\\log-center.mjs（日志中心唯一实现）可加载", !!lc);
+    // 全新克隆里 日志\ 可能还不存在（git 不跟踪空目录）；日志中心本来就是"用到即建"，
+    // 所以先做一次幂等初始化再断言布局 —— 检查的是"日志中心可用"，不是"目录恰好已存在"。
+    if (lc?.ensureLayout) lc.ensureLayout(logRoot);
+    const missingCats = categories.filter((c) => !exists(path.join(logRoot, c)));
+    check(`日志\\ 下 ${categories.length} 个分类子目录齐全`, missingCats.length === 0, missingCats.join("、"));
+    check("日志\\README.md 存在（每个子目录记什么、怎么检索）", exists(path.join(logRoot, "README.md")));
+    if (lc) {
     const w = lc.probeWritable(logRoot);
     check("日志根可写（写不进去时只出声、不阻塞；但这里必须先证明平时是能写的）", w.writable, String(w.error ?? ""));
   }
@@ -316,9 +319,13 @@ async function main() {
     }
   })();
   const giLines = gi.split(/\r?\n/).map((l) => l.trim());
-  const giNeed = ["日志/", ".harness/", ".claude/state/", ".claude/*.bak-*"];
-  const giMissing = giNeed.filter((l) => !giLines.includes(l));
-  check(`.gitignore 含 ${giNeed.length} 条关键忽略（日志 / 运行态 / 备份）`, giMissing.length === 0, giMissing.join("、"));
+    // 日志两条自"克隆可用性"修复起变为：日志**内容**忽略（日志/*）+ 放行说明文件（!日志/README.md）。
+    // 必须用这种写法：被忽略目录里的文件无法用 ! 单独放行。
+    const giNeed = ["日志/*", "!日志/README.md", ".harness/", ".claude/state/", ".claude/*.bak-*"];
+    const giMissing = giNeed.filter((l) => !giLines.includes(l));
+    check(`.gitignore 含 ${giNeed.length} 条关键规则（日志内容忽略 + 放行日志说明 / 运行态 / 备份）`, giMissing.length === 0, giMissing.join("、"));
+    check("我的项目\\.gitignore 存在（空目录随仓库走 + 防误提交）",
+      exists(path.join(WORK_ROOT, "我的项目", ".gitignore")));
 
   // ── 9. 第 3 段新增：状态目录 / 引擎选择 / 自主学习
   section("【9】第 3 段：HARNESS_STATE_DIR · 引擎选择 · 自主学习");

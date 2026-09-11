@@ -404,8 +404,11 @@ if (exists(TABLE)) {
 // ───────────────────────────────────────────── ⑧ 没有污染真实工作区
 section("⑧ 没有污染真实工作区");
 
-check("我的项目\\ 仍为空", exists(path.join(ROOT, "我的项目")) && fs.readdirSync(path.join(ROOT, "我的项目")).length === 0,
-  exists(path.join(ROOT, "我的项目")) ? fs.readdirSync(path.join(ROOT, "我的项目")).join(", ") : "(不存在)");
+  // 我的项目\ 允许有骨架占位 .gitignore（见 scaffold-selftest 里的同款说明）
+  const realProject = exists(path.join(ROOT, "我的项目")) ? fs.readdirSync(path.join(ROOT, "我的项目")) : null;
+  check("我的项目\\ 里只有骨架占位（没有测试残留）",
+    realProject !== null && realProject.every((f) => f === ".gitignore"),
+    realProject ? realProject.join(", ") : "(不存在)");
 check("本次没有往 .claude/ 新增文件", !fs.readdirSync(path.join(ROOT, ".claude")).some((f) => /^b6-|selftest/.test(f)));
 // ★ 第 3 段：协议侦察必须落在**沙箱 state**里，不许落到真实 harness\state\codex-probe\
 check("本次没有往真实 AI-Dev-Harness\\state\\codex-probe\\ 写侦察数据（全部走沙箱 state）",
