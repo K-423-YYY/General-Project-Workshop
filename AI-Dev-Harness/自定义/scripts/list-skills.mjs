@@ -44,6 +44,15 @@ export function contentBytes(text) {
   return Buffer.byteLength(String(text).replace(/\r\n/g, "\n"), "utf8");
 }
 
+/**
+ * 索引比对口径：同样**与行尾无关**。
+ * 本地 README 是 LF、clone 出来是 CRLF（core.autocrlf=true），直接字符串比较会永远报漂移。
+ */
+export function sameIndex(a, b) {
+  const norm = (t) => String(t).replace(/\r\n/g, "\n").trim();
+  return norm(a) === norm(b);
+}
+
 function parseArgs(argv) {
   const o = { json: false, update: false, check: false, maxDesc: 46 };
   for (let i = 0; i < argv.length; i++) {
@@ -169,7 +178,7 @@ function main() {
     if (text === null) { process.stderr.write(`[list-skills] 读不到 ${README}\n`); return 2; }
     const inner = regionInner(text);
     if (inner === null) { process.stderr.write(`[list-skills] README 里找不到标记区 ${BEGIN} / ${END}\n`); return 2; }
-    const same = inner.trim() === body.trim();
+    const same = sameIndex(inner, body);
     process.stdout.write(same
       ? `✅ 技能索引与现状一致（${rows.length} 个技能，索引 ${kb(indexBytes)}）\n`
       : `⚠️  技能索引已漂移 —— 跑 node list-skills.mjs --update 重新生成。\n`);

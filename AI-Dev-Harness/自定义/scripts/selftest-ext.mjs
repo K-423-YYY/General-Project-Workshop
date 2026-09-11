@@ -377,11 +377,13 @@ async function main() {
     // 行尾无关性：本仓库 core.autocrlf=true，本地 LF / clone 后 CRLF —— 体积口径必须一致，
     // 否则会出现"本地 --check 通过、克隆后报漂移"（这真的发生过一次）。
     try {
-      const { contentBytes } = await import(pathToFileURL(listSkills).href);
+      const { contentBytes, sameIndex } = await import(pathToFileURL(listSkills).href);
       check("索引体积口径与行尾无关（LF 与 CRLF 算出同一个数）",
         contentBytes("a\r\nb\r\n") === contentBytes("a\nb\n"));
+      check("索引比对口径与行尾无关（CRLF 版 README 不会误报漂移）",
+        sameIndex("| a | b |\r\n| c | d |", "| a | b |\n| c | d |") === true);
     } catch {
-      check("索引体积口径与行尾无关（LF 与 CRLF 算出同一个数）", false, "无法导入 contentBytes");
+      check("索引口径与行尾无关（体积 + 比对）", false, "无法导入 list-skills 的导出函数");
     }
   }
   // 规则层：硬规则正文里必须写明"技能只读摘要"
