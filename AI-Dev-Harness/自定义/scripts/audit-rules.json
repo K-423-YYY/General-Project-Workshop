@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "updated": "2026-09-11",
+  "note": [
+    "U3 会话后审计的检查规则（audit.mjs 读取本文件，规则可改，不用改代码）。",
+    "severity: high 必须处理 / medium 要看一眼 / low 提醒 / info 仅供参考。",
+    "regExp 一律用 JS 正则字面量语义（字符串写法，注意转义）。",
+    "本文件的定位是「事后追责」——对没有机制层的引擎（Codex / DSH / Trae），这是唯一的兜底检查。"
+  ],
+
+  "thresholds": {
+    "e2ePerSession": 2,
+    "ciPerSession": 3,
+    "bypassWarn": 1,
+    "editsWithoutAnyTest": 3,
+    "findingLimit": 25
+  },
+
+  "sources": {
+    "logCenterRoot": "日志/",
+    "logCenterCommand": "日志/02-命令/cmd-*.jsonl",
+    "logCenterVerify": "日志/03-验证/verify-*.log",
+    "logCenterAudit": "日志/07-审计/audit-*.md",
+    "note": [
+      "第 2 段（日志中心）：命令日志与验收原始输出已从项目内 .harness\\logs\\ 迁到**工作区根**的 日志\\。",
+      "上面几条只作为路径说明；audit.mjs 实际通过 自定义\\scripts\\lib\\log-center.mjs 解析日志根，",
+      "并按记录里的 project 字段只统计本次审计的项目（日志中心是工作区级的，会同一天混多个项目）。"
+    ],
+    "hookQuota": ".claude/state/quota.json",
+    "ctxFile": ".claude/state/ctx.json",
+    "handoff": ".harness/HANDOFF.md",
+    "journal": ".harness/JOURNAL.md"
+  },
+
+  "forbiddenCommands": [
+    {
+      "id": "sed-inplace",
+      "regExp": "\\bsed\\b[^\\n]*\\s-[A-Za-z]*i",
+      "severity": "high",
+      "why": "就地替换在 Windows 下会静默失配（退出码 0 但文件没改），上次事故里改坏了 4 次 AI 还不知道"
+    },
+    {
+      "id": "perl-inplace",
+      "regExp": "\\bperl\\b[^\\n]*\\s-[A-Za-z]*i",
+      "severity": "high",
+      "why": "同上"
+    },
+    {
+      "id": "shell-redirect-to-source",
+      "regExp": "(cat|type|echo)[^\\n]*>\\s*\\S+\\.(ts|tsx|js|jsx|mjs|cjs|json|md|css|html|py|ps1|sh|yml|yaml)\\b",
+      "severity": "high",
+      "why": "用重定向写源文件绕过审阅，且容易一次写坏整个文件"
+    },
+    {
+      "id": "python-inline-write",
+      "regExp": "\\bpython[0-9.]*\\s+-c\\b(?=[\\s\\S]*(?:open\\s*\\([^)]*['\\\"][wa]|writeFile|write_text|\\.write\\s*\\(|\\.replace\\s*\\(|shutil\\.|os\\.(?:remove|rename|unlink)))",
+      "severity": "high",
+      "why": "python 内联改码（`-c` 且含写操作）—— 与包装器 _log.mjs 的判定保持一致，`python -c \"print(1)\"` 不算"
+    },
+    {
+      "id": "git-destructive",
+      "regExp": "git\\s+(reset\\s+--hard|push\\s+--force|clean\\s+-[a-z]*f)",
+      "severity": "high",
+      "why": "破坏性 git 操作会丢掉用户的工作"
+    },
+    {
+      "id": "rm-rf",
+      "regExp": "\\brm\\s+-[A-Za-z]*[rf][A-Za-z]*\\s",
+      "severity": "medium",
+      "why": "递归删除，确认目标无误再执行"
+    },
+    {
+      "id": "secrets-echo",
+      "regExp": "(echo|cat|type)[^\\n]*(\\.[Ee][Nn][Vv]\\b|API[_-]?KEY|AUTH[_-]?TOKEN|SECRET)",
+      "severity": "high",
+      "why": "把密钥打印到上下文里等于泄露（会话记录可能被保存/同步）"
+    },
+    {
+      "id": "long-sleep",
+      "regExp": "\\bsleep\\s+(?:[3-9][0-9]|[1-9][0-9]{2,})\\b",
+      "severity": "low",
+      "why": "长空等；上次事故里白等了 15.6 分钟"
+    },
+    {
+      "id": "full-e2e-repeat",
+      "regExp": "\\b(playwright\\s+test|npx\\s+playwright)\\b",
+      "severity": "low",
+      "why": "全量 E2E 很贵（上次 131 次 / 102 分钟）；看是否「改一行就跑全量」"
+    }
+  ],
+
+  "protectedPaths": [
+    {
+      "regExp": "AI-Dev-Harness[\\\\/]内置[\\\\/]",
+      "severity": "high",
+      "why": "内置区是用户铁律区（改造期外不得改）"
+    },
+    {
+      "regExp": "^我的项目[\\\\/]",
+      "severity": "info",
+      "why": "我的项目\\ 是建项目用的占位目录，直接改它说明脚手架流程可能走偏了"
+    },
+    {
+      "regExp": "(^|[\\\\/])\\.env(\\.|$)",
+      "severity": "high",
+      "why": "环境变量文件含密钥，不应被 AI 修改或读取"
+    },
+    {
+      "regExp": "(^|[\\\\/])AI-Dev-Harness[\\\\/]state[\\\\/].*\\.json$",
+      "severity": "low",
+      "why": "归档区一般是追加，整文件改写要确认"
+    }
+  ],
+
+  "tempArtifacts": [
+    "zz*.spec.*",
+    "zz*.test.*",
+    "probe-*.spec.*",
+    "tmp-*.*",
+    "temp-*.*",
+    "*.orig",
+    "*.rej",
+    "*.bak-*"
+  ],
+
+  "ignorePaths": [
+    "node_modules/",
+    ".git/",
+    "dist/",
+    "build/",
+    "out/",
+    "coverage/",
+    "test-results/",
+    ".harness/",
+    ".claude/",
+    "AI-Dev-Harness/state/"
+  ]
+}

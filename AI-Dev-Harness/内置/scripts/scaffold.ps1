@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # scaffold.ps1 - 生成项目脚手架（按软件最少化）
 # 由 AI 在阶段 0/4 调用；也可手动运行。仅在需要时运行，无后台进程。
 # 用法:
@@ -78,7 +78,13 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
   try {
     $ErrorActionPreference = 'Continue'
     & git rev-parse --is-inside-work-tree 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { & git init 2>&1 | Out-Null; Write-Host 'OK git init' }
+    # 用 -b main：交付时的 GitHub 步骤（git push -u origin main）默认假设主分支叫 main，
+    # 这里要是用默认的 master，用户照步骤跑就会「本地 master、远端 main」对不上。
+    if ($LASTEXITCODE -ne 0) {
+      & git init -b main 2>&1 | Out-Null
+      if ($LASTEXITCODE -ne 0) { & git init 2>&1 | Out-Null }   # 老版本 git 不认 -b 时兜底
+      Write-Host 'OK git init'
+    }
   } finally { $ErrorActionPreference = 'Stop'; Pop-Location }
 }
 

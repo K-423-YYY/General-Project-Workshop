@@ -1,0 +1,130 @@
+{
+  "autoCompactWindow": 102400,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/guard-bash.mjs"
+            ],
+            "timeout": 15,
+            "statusMessage": "检查命令策略…"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/guard-tools.mjs"
+            ],
+            "timeout": 15,
+            "statusMessage": "检查工具策略…"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/guard-bash.mjs"
+            ],
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/shape-output.mjs"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/guard-bash.mjs"
+            ],
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/shape-output.mjs"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/compact-instructions.mjs"
+            ],
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/on-stop.mjs"
+            ],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              ".claude/hooks/inject-rules.mjs"
+            ],
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node",
+    "args": [
+      ".claude/hooks/statusline.mjs"
+    ]
+  }
+}
