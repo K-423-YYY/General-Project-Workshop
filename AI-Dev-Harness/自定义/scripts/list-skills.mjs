@@ -34,6 +34,16 @@ const END = `<!-- ${REGION}:end -->`;
 /** 索引超过这个体积就报警：索引自己变成大文件，等于没省 */
 const INDEX_BUDGET_BYTES = 8 * 1024;
 
+/**
+ * 体积口径：**与行尾无关**。
+ * 为什么必须归一化：本仓库 core.autocrlf=true —— 本地工作区是 LF，而 clone 出来是 CRLF，
+ * 直接用文件字节数会让"索引"在克隆里算出来不一样（克隆复验时真的漂移过一次）。
+ * 归一到 LF 后，两种检出方式得到同一个数字。
+ */
+export function contentBytes(text) {
+  return Buffer.byteLength(String(text).replace(/\r\n/g, "\n"), "utf8");
+}
+
 function parseArgs(argv) {
   const o = { json: false, update: false, check: false, maxDesc: 46 };
   for (let i = 0; i < argv.length; i++) {
@@ -76,12 +86,13 @@ function scan() {
     }
     const text = fs.readFileSync(file, "utf8");
     const fm = readFrontmatter(file);
+    const normalized = text.replace(/\r\n/g, "\n");
     rows.push({
       dir,
       name: fm?.name ?? dir,
       description: fm?.description ?? "(缺 frontmatter 的 name/description)",
-      bytes: Buffer.byteLength(text, "utf8"),
-      lines: text.split(/\r?\n/).length,
+      bytes: contentBytes(text),
+      lines: normalized.split("\n").length,
       missing: false,
       noFrontmatter: !fm || !fm.name || !fm.description,
     });

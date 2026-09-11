@@ -21,7 +21,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadLogCenter, resolveLogRoot } from "./lib/log-center.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url)); // …\自定义\scripts
@@ -374,6 +374,15 @@ async function main() {
     }
     const chk = runLs("--check");
     check("skills\\README.md 里的索引与现状一致（--check）", chk.status === 0, `status=${chk.status} ${(chk.stdout || "").trim()}`);
+    // 行尾无关性：本仓库 core.autocrlf=true，本地 LF / clone 后 CRLF —— 体积口径必须一致，
+    // 否则会出现"本地 --check 通过、克隆后报漂移"（这真的发生过一次）。
+    try {
+      const { contentBytes } = await import(pathToFileURL(listSkills).href);
+      check("索引体积口径与行尾无关（LF 与 CRLF 算出同一个数）",
+        contentBytes("a\r\nb\r\n") === contentBytes("a\nb\n"));
+    } catch {
+      check("索引体积口径与行尾无关（LF 与 CRLF 算出同一个数）", false, "无法导入 contentBytes");
+    }
   }
   // 规则层：硬规则正文里必须写明"技能只读摘要"
   const rulesTpl = path.join(CUSTOM, "项目规则模板", "AGENTS.template.md");
