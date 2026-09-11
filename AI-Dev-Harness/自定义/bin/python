@@ -1,0 +1,12 @@
+#!/bin/sh
+# harness 命令包装器（Git Bash / MSYS）—— 真正逻辑在 _log.mjs
+# 由 run.ps1 / run.sh 前置到 PATH；只拦 shell 命令，不改命令本身的行为。
+d=$(dirname "$0")
+case "$d" in
+  /*) if command -v cygpath >/dev/null 2>&1; then d=$(cygpath -w "$d" 2>/dev/null || printf "%s" "$d"); fi ;;
+esac
+if ! command -v node >/dev/null 2>&1; then
+  echo "[harness] 未找到 node，命令包装器无法工作（请安装 Node.js 或从 PATH 里去掉本目录）" >&2
+  exit 127
+fi
+exec node "$d/_log.mjs" --tool python -- "$@"
