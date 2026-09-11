@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "updated": "2026-09-11",
+  "_说明": [
+    "静态模型能力表（L0 第①档：零成本、零操作）。",
+    "用途：给 env-doctor.mjs / probe-model.mjs 提供『模型窗口 → autoCompactWindow』的默认答案。",
+    "最重要的规则（见 02-改进方案/01-总方案.md 的 L0 节）：",
+    "  任何未知模型一律先用 conservative.autoCompactWindow = 102400。",
+    "  这样压缩阈值 ≈ 69000，『上下文涨到 78 万』物理上不可能再发生。",
+    "本表只描述『声明窗口』，不代表真实可用窗口；真实值靠被动学习（画像文件）或主动探测获得。",
+    "第三方模型一律不要写 [1M] 后缀 —— 对第三方模型它只做本地记账，会把上限抬到 96.7 万。"
+  ],
+
+  "compactionReserve": 33000,
+  "_compactionReserve说明": "压缩阈值 = 模型窗口 − 20000 − 13000（本机 Claude Code v2.1.263 二进制核实的两个预留常量）",
+
+  "conservative": {
+    "autoCompactWindow": 102400,
+    "measuredWindow": 102400,
+    "hookStrictness": "strict",
+    "raiseRequiresOptIn": true,
+    "_raiseRequiresOptIn说明": [
+      "true = 探测/被动学习的结果**不允许**把 autoCompactWindow 抬到 conservative.autoCompactWindow 之上。",
+      "为什么：主动探测测的是『端点吞得下多少』，不是『模型在这个尺寸下还保持清醒』。",
+      "  2026-09-11 实测：deepseek-v4-flash 的端点接受了 524288 token 且三个针都复述正确，",
+      "  但同一批会话的事故表症是上下文 78 万时模型明显退化（同文件改 19 次、忘记早期约束）——",
+      "  那是『能力退化』，端点不报错，探针也测不出来。所以宁可先按 102400 跑一个项目。",
+      "要放开：把这项改成 false，或用 probe-model.mjs --probe --allow-raise。"
+    ]
+  },
+
+  "defaults": {
+    "window": 131072,
+    "autoCompactWindow": 102400,
+    "maxOutputTokens": 8192,
+    "supportsToolUse": true,
+    "supportsParallelTools": false,
+    "supportsCacheControl": true,
+    "supportsSystemPrompt": true,
+    "instructionFollowing": 0.4,
+    "hookStrictness": "strict"
+  },
+
+  "mapping": {
+    "_说明": "『实测/声明窗口 → autoCompactWindow』映射。见 01-总方案.md 的『能力 → 配置映射』。",
+    "windowToAutoCompact": [
+      { "maxWindow": 131072, "autoCompactWindow": 102400, "label": "≤128K" },
+      { "maxWindow": 262144, "autoCompactWindow": 160000, "label": "128K–256K" },
+      { "maxWindow": null, "autoCompactWindow": 200000, "label": ">256K（保守，不贪）" }
+    ],
+    "strictness": {
+      "strictBelow": 0.7,
+      "standardAtOrAbove": 0.85,
+      "_说明": "instructionFollowing < 0.7 → strict；≥ 0.85 → standard；中间仍按 strict。"
+    },
+    "cacheControlPenalty": 0.6,
+    "_cacheControlPenalty说明": "supportsCacheControl=false 时，会话切分阈值再乘 0.6（每次重读全价）",
+    "outputThresholdPenalty": 0.5,
+    "_outputThresholdPenalty说明": "maxOutputTokens < 4096 时，输出整形阈值下调到一半"
+  },
+
+  "hardCeiling": {
+    "autoCompactWindow": 200000,
+    "_说明": "任何情况下不得把 autoCompactWindow 设得比这个更大 —— 这是『防爆』的最后一道夹子。"
+  },
+
+  "passiveLearning": {
+    "promptTooLongFactor": 0.75,
+    "promptTooLongFloor": 32768,
+    "sessionOkTurns": 30,
+    "sessionOkFactor": 1.1,
+    "_说明": "被动学习（L0 第②档，零成本）：遇到一次 prompt-too-long 立即下调 25%；连续 30 轮无异常自动上调 10%（有上限）。"
+  },
+
+  "probe": {
+    "startTokens": 65536,
+    "maxTokens": 524288,
+    "_maxTokens说明": "探测封顶值。默认 512K（= 已知 deepseek 窗口的 4 倍），避免在「端点什么都接受」时白烧 200 万 token；需要测更大窗口用 --max 显式调高。封顶不算失败：只要随机串复述得出来，就是真的支持到该尺寸。",
+    "bisectRounds": 4,
+    "needleLength": 32,
+    "precision": 0.1,
+    "safetyFactor": 0.8,
+    "_safetyFactor说明": "即使主动探测成功也再乘 0.8（见 06-待实测确认.md 待确认项 #3 的兜底方案）。",
+    "_说明": "仅 --probe 使用，会消耗用户额度，必须显式确认。"
+  },
+
+  "bannedSuffix": {
+    "pattern": "\\[1m\\]",
+    "flags": "i",
+    "suffix": "[1M]",
+    "declaredWindow": 1000000,
+    "_说明": "第三方模型写 [1M] 只会把本地记账上限抬到 100 万，服务端完全不知情。历史事故根因。"
+  },
+
+  "models": [
+    {
+      "pattern": "deepseek-v4-flash-vision-exp*",
+      "window": 131072,
+      "note": "曾出事故（用户 settings 里写过 [1M]），勿写 [1M] 后缀"
+    },
+    {
+      "pattern": "deepseek-v4-flash*",
+      "window": 131072,
+      "instructionFollowing": 0.4,
+      "hookStrictness": "strict",
+      "note": "曾出事故，勿写 [1M] 后缀。实测违规 sed -i 6 次、内联改码 111 次 → 严格模式"
+    },
+    {
+      "pattern": "deepseek-v4-pro*",
+      "window": 131072,
+      "instructionFollowing": 0.4,
+      "hookStrictness": "strict",
+      "note": "曾出事故，勿写 [1M] 后缀"
+    },
+    {
+      "pattern": "deepseek-*",
+      "window": 131072,
+      "instructionFollowing": 0.4,
+      "hookStrictness": "strict",
+      "note": "deepseek 系列通配兜底，勿写 [1M] 后缀"
+    },
+    {
+      "pattern": "glm-5.3-flash*",
+      "window": 131072,
+      "instructionFollowing": 0.4,
+      "hookStrictness": "strict",
+      "note": "曾出事故，勿写 [1M] 后缀"
+    },
+    {
+      "pattern": "claude-sonnet*",
+      "window": 200000,
+      "instructionFollowing": 0.9,
+      "hookStrictness": "standard",
+      "note": "原生模型，可写 [1M]（但要 user 级 beta header，本项目用不到）"
+    },
+    {
+      "pattern": "claude-opus*",
+      "window": 200000,
+      "instructionFollowing": 0.9,
+      "hookStrictness": "standard"
+    },
+    {
+      "pattern": "claude-haiku*",
+      "window": 200000,
+      "instructionFollowing": 0.9,
+      "hookStrictness": "standard"
+    },
+    {
+      "pattern": "claude-*",
+      "window": 200000,
+      "instructionFollowing": 0.85,
+      "hookStrictness": "standard",
+      "note": "claude 系列通配兜底"
+    }
+  ],
+
+  "_未知模型怎么办": "不匹配 models 里任何 pattern → 用 conservative 段（autoCompactWindow = 102400）。这是本表最重要的一条行为。"
+}

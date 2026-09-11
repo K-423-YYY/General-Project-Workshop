@@ -1,0 +1,50 @@
+# ════════════════════════════════════════════════════════════
+# DeepSeek Harness 适配 —— --patch 叠加层（第 6 批 · F11）
+#
+# 用法：dsh --profile <profile> --patch "<此文件的绝对路径>" "<任务>"
+#       可重复叠加，后面的层覆盖前面的层。
+#
+# ★ 层序（本批从 dsh 源码核实）：
+#     bundle 层 → profile 的 cordis.patch.yml → $DSH_HOME/cordis.patch.yml → --patch 叠加层
+#   所以 --patch 是**最后生效**的一层，优先级最高。
+#
+# ★ 文件格式（本批实测，见 ../../scripts/probe-engines.mjs）：
+#   顶层必须是 YAML **数组**；每项要么是「插入」要么是「覆盖」：
+#     插入： - insert: [ <行对象…> ]            （不写 id → 插到根）
+#            - id: <某个 group 行的 id>
+#              insert: [ <行对象…> ]            （插进那个 group 的 config 里）
+#     覆盖： - id: <已有行的 id>
+#              [name: <该行的 name，写了就必须一致，否则跳过>]
+#              <任意键>: <新值>                 （整键替换，不是深合并）
+#   · 允许 !!js 表达式；非法字段在**启动时**抛错（fail-loud）；
+#   · 目标 id 不存在 → 只告警不报错（这样一个叠加层可以跨多个 profile 复用）。
+#
+# ★ 本文件已用 `dsh --profile headless --patch <本文件> --dump-config` 实测可加载。
+# ════════════════════════════════════════════════════════════
+
+# ── 覆盖 1：把 AGENTS.md 的注入预算调大 ──
+# DSH 的 agent-instructions 行默认 maxBytes=65536，本 harness 的 AGENTS.md +
+# 项目规则模板（内联 40 行硬规则）会接近这个上限。调到 128 KB 留出余量。
+#
+# ⚠️ 注意：patch 是**整键替换**（target[key] = value），不是深合并——
+#    所以这里必须把 config 的**完整**内容写出来，不能只写要改的那个字段。
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 131072
+
+# ── 插入：装一个「命令包装」插件行（示例，默认注释掉）──
+# 这是 DSH 侧真正**强制**拦 shell 命令的正路：写一个插件包，让它注册工具拦截。
+# 本批**不发明包名**——插件本体是第 7 批（U4 命令包装）的活。
+# 那之前，DSH 侧的强制靠 U4 的 `自定义/bin/` PATH 前置（对走 harness 启动的会话生效）。
+#
+# - insert:
+#     - id: harness-cmd-guard
+#       name: '<你的插件包名，例如 file:./自定义/引擎适配/dsh/plugin-cmd-guard>'
+#       config:
+#         rules: '自定义/bin'   # 复用 U4 的包装器规则
+
+# ── 覆盖 2：把某个已有行关掉（示例，默认注释掉）──
+# - id: session-telemetry-otel
+#   name: '@deepseek-ai/dsh-session-telemetry-otel'
+#   disabled: true

@@ -1,0 +1,803 @@
+{
+  "schema": 1,
+  "updated": "2026-09-12",
+  "generator": "自定义/scripts/probe-engines.mjs",
+  "detection": {
+    "resolver": "自定义/scripts/lib/resolve-command.mjs（.exe → .cmd → .bat → .com → 无扩展名；认 PATH/PATHEXT/MSYS）",
+    "usedBy": [
+      "probe-engines.mjs",
+      "env-doctor.mjs",
+      "engine-probe-selftest.mjs",
+      "run.ps1",
+      "run.sh"
+    ],
+    "recheckedThisRun": [
+      "claude-code",
+      "codex-cli",
+      "deepseek-harness"
+    ],
+    "notRecheckedThisRun": [
+      "traecode-cli"
+    ],
+    "note": "本机没有 traecode-cli → 这几项本轮**跳过实测**，其结论转存到对应引擎的 lastVerified（标注来源日期，未复验）。"
+  },
+  "runtimeChoice": {
+    "available": [
+      {
+        "id": "codex-cli",
+        "label": "Codex CLI",
+        "kind": "cli",
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\codex.cmd",
+        "via": "PATH 上的 codex"
+      },
+      {
+        "id": "claude-code",
+        "label": "Claude Code（终端）",
+        "kind": "cli",
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\claude.cmd",
+        "via": "PATH 上的 claude"
+      },
+      {
+        "id": "claude-code-desktop",
+        "label": "Claude Code（桌面端）",
+        "kind": "desktop",
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\Claude",
+        "via": "Claude 桌面应用数据目录"
+      },
+      {
+        "id": "deepseek-harness",
+        "label": "DeepSeek Harness (dsh)",
+        "kind": "cli",
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\dsh.cmd",
+        "via": "PATH 上的 dsh"
+      },
+      {
+        "id": "trae-ide",
+        "label": "Trae IDE（图形端）",
+        "kind": "desktop",
+        "path": "e:\\Trae\\bin\\trae.cmd",
+        "via": "PATH 上的 trae"
+      }
+    ],
+    "notInstalled": [
+      "traecode-cli"
+    ],
+    "last": null,
+    "default": "codex-cli",
+    "stateDir": "C:\\Users\\29137\\Desktop\\项目2\\AI自动化工具配置\\自建\\脚本\\General-Project-Workshop\\AI-Dev-Harness\\state",
+    "choiceFile": "C:\\Users\\29137\\Desktop\\项目2\\AI自动化工具配置\\自建\\脚本\\General-Project-Workshop\\AI-Dev-Harness\\state\\engine-choice.json",
+    "resolver": "自定义/scripts/lib/engine-detect.mjs"
+  },
+  "_说明": [
+    "引擎能力表（F10 · 第 6 批）。回答：各引擎有没有机制层、机制层怎么写、能拦住什么。",
+    "★ 本表的每一条结论都标注了 confidence，请按标注理解，不要把「未查明」当成「不支持」：",
+    "  · verified-live   —— 真会话 / 真命令实测过（最强）",
+    "  · config-verified —— 用引擎自己的 --strict-config 差分探出来的（配置格式可信）",
+    "  · partial         —— 只证实了一部分，细节见 probes",
+    "  · 未查明          —— 没探到，如实在此标注，不做推测",
+    "★ 探测铁律：绝不读用户配置文件（可能含 API key）；只用只读命令；靠报错信息推断字段。",
+    "  实现见 probe-engines.mjs 的 safeRead()（白名单式读取）与 PROBES（命令写死）。"
+  ],
+  "probePolicy": {
+    "绝不读的文件": [
+      ".codex/config.toml",
+      ".codex/auth.json",
+      ".codex/credentials.json",
+      ".dsh/settings.yaml",
+      ".dsh/.credentials.yaml",
+      ".dsh/.anonymous-user-id",
+      ".claude/settings.json",
+      ".claude.json"
+    ],
+    "只读命令": [
+      "codex --version / codex features list",
+      "codex --strict-config -m <不存在的模型> exec <无副作用指令>  （CODEX_HOME=临时目录）",
+      "dsh --version / dsh --help",
+      "dsh --profile headless --dump-default-config",
+      "dsh --profile headless --patch <临时文件> --dump-config"
+    ],
+    "隔离手段": [
+      "Codex：CODEX_HOME 指向临时目录 → codex 自己就不会读 ~/.codex",
+      "Codex：模型名故意写成不存在的 zzz-probe-unknown-model → 到不了 API",
+      "DSH：--dump-config 的输出**即用即弃**，只提取自己写入的标记行，绝不落盘"
+    ],
+    "零额度": "整轮探测 0 次模型请求。2026-09-11 实测确认。",
+    "已知副作用": [
+      "dsh 的 --dump-* 会重写 profile 目录里的 cordis.yml（dsh 自身既有行为：该文件固定为空根列表）。",
+      "codex 的临时 CODEX_HOME 会在结束时删除。"
+    ]
+  },
+  "engines": {
+    "claude-code": {
+      "id": "claude-code",
+      "installed": true,
+      "version": "2.1.263",
+      "ruleAutoload": {
+        "supported": true,
+        "files": [
+          "CLAUDE.md",
+          "AGENTS.md"
+        ],
+        "evidence": "第 2/4 批真会话实测"
+      },
+      "mechanism": {
+        "kind": "hooks",
+        "supported": true,
+        "confidence": "verified-live(第 2/3 批)",
+        "configFile": ".claude/settings.json（工作区根 + 项目级；不动用户级）",
+        "events": [
+          "SessionStart",
+          "PreToolUse",
+          "PostToolUse",
+          "PreCompact",
+          "Stop",
+          "SessionEnd"
+        ],
+        "handlerVariants": [
+          "command"
+        ],
+        "configFormat": [
+          "{ \"hooks\": { \"<事件名>\": [ { \"matcher\": \"<工具名>\", \"hooks\": [ { \"type\": \"command\", \"command\": \"node\", \"args\": [\"<脚本>\"], \"timeout\": 10 } ] } ] }"
+        ],
+        "evidence": "第 2 批（拦下 sed -i / 逃生阀 / 3 次 playwright 配额）、第 3 批（输出截断 / HANDOFF / 状态栏）均真会话实测",
+        "limitation": "只能覆盖 Claude Code，且项目级 hooks 需要项目目录内有 .claude/（由 scaffold-ext.mjs 落地）"
+      },
+      "canBlockShell": true,
+      "canBlockEditTool": true,
+      "outputShaping": true,
+      "contextTelemetry": true,
+      "desktop": {
+        "installed": true,
+        "evidence": "%APPDATA%/Claude",
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\Claude",
+        "version": null,
+        "mechanismSameAsTerminal": true,
+        "effectiveOnlyInProjectDir": true,
+        "note": "同一套 .claude/ hooks（settings.json + 9 个脚本）；但只有在**项目目录里**开会话才生效 —— Claude Code 用会话 cwd 当项目根、不向上寻找。在别处开会话 = 机制层完全不生效（不是部分生效）。",
+        "evidenceNote": "本机判据为桌面应用安装痕迹，不是进程存活；~/.claude.json 不能当判据（终端 CLI 也会生成）"
+      },
+      "findings": [],
+      "probes": [],
+      "detection": {
+        "installed": true,
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\claude.cmd",
+        "via": "PATH 上的 claude",
+        "kind": "cli",
+        "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
+        "checkedAt": "2026-09-12"
+      }
+    },
+    "codex-cli": {
+      "id": "codex-cli",
+      "installed": true,
+      "version": "0.153.4",
+      "ruleAutoload": {
+        "supported": true,
+        "files": [
+          "AGENTS.md"
+        ],
+        "evidence": "codex --help / 既有适配器文档 内置/adapters/codex-client.md"
+      },
+      "mechanism": {
+        "kind": "hooks",
+        "supported": true,
+        "confidence": "config-verified",
+        "configFile": "~/.codex/config.toml 的 [hooks] 段（或 -c 覆盖 / 项目级 hooks.json）",
+        "handlerVariants": [
+          "command",
+          "mcp_tool",
+          "prompt",
+          "agent"
+        ],
+        "events": [
+          "PreToolUse",
+          "PermissionRequest",
+          "PostToolUse",
+          "PreCompact",
+          "PostCompact",
+          "SessionStart",
+          "SessionEnd",
+          "UserPromptSubmit",
+          "SubagentStart",
+          "SubagentStop",
+          "Stop",
+          "Interrupt"
+        ],
+        "configFormat": [
+          "[hooks]",
+          "<事件名> = [ { matcher = \"<工具名或正则>\", hooks = [ { type = \"command\", command = \"<命令行>\", timeout = <秒> } ] } ]"
+        ],
+        "trust": {
+          "required": true,
+          "evidence": "codex --help 的 --dangerously-bypass-hook-trust「Run enabled hooks without requiring persisted hook trust」",
+          "state_fields": [
+            "enabled",
+            "trusted_hash"
+          ]
+        },
+        "probesPassed": 23,
+        "probesTotal": 23
+      },
+      "findings": [
+        {
+          "level": "info",
+          "text": "codex 的 hooks 是「stable」阶段、出厂默认已启用的特性"
+        }
+      ],
+      "probes": [
+        {
+          "label": "codex features list（隔离 CODEX_HOME）",
+          "code": 0,
+          "key_line": "hooks                                    stable             true"
+        },
+        {
+          "label": "对照组 · 不存在的键",
+          "result": "unknown configuration field `zzz_not_a_key`"
+        },
+        {
+          "label": "hooks 顶层键存在",
+          "result": "accepted"
+        },
+        {
+          "label": "hooks 类型是 struct 而不是数组",
+          "result": "invalid type: sequence, expected struct HooksToml"
+        },
+        {
+          "label": "事件 PreToolUse 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 PermissionRequest 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 PostToolUse 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 PreCompact 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 PostCompact 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 SessionStart 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 SessionEnd 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 UserPromptSubmit 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 SubagentStart 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 SubagentStop 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 Stop 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "事件 Interrupt 合法",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "matcher 是字符串",
+          "result": "invalid type: integer `1`, expected a string"
+        },
+        {
+          "label": "hooks 是数组",
+          "result": "invalid type: integer `1`, expected a sequence"
+        },
+        {
+          "label": "处理器 type 的合法取值",
+          "result": "unknown variant `bogus`, expected one of `command`, `mcp_tool`, `prompt`, `agent`"
+        },
+        {
+          "label": "command 是字符串",
+          "result": "invalid type: integer `1`, expected a string"
+        },
+        {
+          "label": "timeout 是 u64",
+          "result": "invalid type: string \"y\", expected u64"
+        },
+        {
+          "label": "async 是布尔",
+          "result": "invalid type: integer `1`, expected a boolean"
+        },
+        {
+          "label": "additionalContextLimit 是 usize",
+          "result": "invalid type: string \"z\", expected usize"
+        },
+        {
+          "label": "★ 交付用配置片段整体合法",
+          "result": "accepted"
+        }
+      ],
+      "features": {
+        "hooks": {
+          "stage": "stable",
+          "enabled": true
+        },
+        "raw_line": "hooks                                    stable             true",
+        "isolated_home": true
+      },
+      "methodValid": true,
+      "observed": [
+        {
+          "label": "对照组 · 不存在的键",
+          "valid": false,
+          "message": "unknown configuration field `zzz_not_a_key`",
+          "matched_expectation": true
+        },
+        {
+          "label": "hooks 顶层键存在",
+          "valid": true,
+          "message": "2026-09-11T17:39:52.525529Z  WARN codex_core_plugins::startup_sync: git sync failed for curated plugin sync; falling back to GitHub HTTP error=git fetch curated plugins repo failed with status exit code: 128: fatal: unable to access 'https://github.com/openai/plugins.git/': Recv failure: Connection was reset",
+          "matched_expectation": true
+        },
+        {
+          "label": "hooks 类型是 struct 而不是数组",
+          "valid": false,
+          "message": "invalid type: sequence, expected struct HooksToml",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 PreToolUse 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 PermissionRequest 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 PostToolUse 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 PreCompact 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 PostCompact 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 SessionStart 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 SessionEnd 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 UserPromptSubmit 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 SubagentStart 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 SubagentStop 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 Stop 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "事件 Interrupt 合法",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "matcher 是字符串",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a string",
+          "matched_expectation": true
+        },
+        {
+          "label": "hooks 是数组",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a sequence",
+          "matched_expectation": true
+        },
+        {
+          "label": "处理器 type 的合法取值",
+          "valid": false,
+          "message": "unknown variant `bogus`, expected one of `command`, `mcp_tool`, `prompt`, `agent`",
+          "matched_expectation": true
+        },
+        {
+          "label": "command 是字符串",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a string",
+          "matched_expectation": true
+        },
+        {
+          "label": "timeout 是 u64",
+          "valid": false,
+          "message": "invalid type: string \"y\", expected u64",
+          "matched_expectation": true
+        },
+        {
+          "label": "async 是布尔",
+          "valid": false,
+          "message": "invalid type: integer `1`, expected a boolean",
+          "matched_expectation": true
+        },
+        {
+          "label": "additionalContextLimit 是 usize",
+          "valid": false,
+          "message": "invalid type: string \"z\", expected usize",
+          "matched_expectation": true
+        },
+        {
+          "label": "★ 交付用配置片段整体合法",
+          "valid": true,
+          "message": "2026-09-11T17:40:10.335832Z  WARN codex_core_plugins::manager: failed to warm featured plugin ids cache error=remote featured plugin request to https://chatgpt.com/backend-api/plugins/featured?platform=codex failed with status 401 Unauthorized: {\"detail\":\"Unauthorized\"}",
+          "matched_expectation": true
+        }
+      ],
+      "detection": {
+        "installed": true,
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\codex.cmd",
+        "via": "PATH 上的 codex",
+        "kind": "cli",
+        "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
+        "checkedAt": "2026-09-12"
+      }
+    },
+    "deepseek-harness": {
+      "id": "deepseek-harness",
+      "installed": true,
+      "version": "0.1.0-rc.6",
+      "ruleAutoload": {
+        "supported": true,
+        "files": [
+          "$DSH_HOME/AGENTS.md",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "AGENTS.local.md"
+        ],
+        "evidence": "默认组合里 agent-instructions 行处于启用状态且带 config.maxBytes=65536（本批 --dump-default-config 实测）",
+        "row": "agent-instructions",
+        "maxBytes": 65536,
+        "contradictsExistingDoc": {
+          "doc": "内置/adapters/deepseek-harness.md",
+          "doc_claim": "「DeepSeek Harness 没有自动读 AGENTS.md 的机制」",
+          "probe_result": "默认组合里 agent-instructions 行启用，maxBytes=65536"
+        }
+      },
+      "mechanism": {
+        "kind": "patch-layer",
+        "supported": true,
+        "confidence": "verified-live",
+        "configFile": "~/.dsh/cordis.patch.yml",
+        "configFormat": [
+          "# 顶层 YAML 数组，每项是一条 loader patch 条目：",
+          "#   插入： - insert: [ <行对象…> ]              （或 - id: <组 id> + insert: […]）",
+          "#   覆盖： - id: <已有行 id> + 任意键           （可带 name 做一致性校验）",
+          "# 层序（后覆盖前）：bundle 层 → profile 的 cordis.patch.yml → $DSH_HOME/cordis.patch.yml → --patch 叠加层",
+          "# 允许 !!js 表达式；非法字段在**启动时**抛错（fail-loud），目标 id 不存在只告警。"
+        ],
+        "rowIdsForHooking": [
+          "sandbox",
+          "sandbox-policy",
+          "bash-sandbox",
+          "pwsh-sandbox",
+          "approval",
+          "tool-bash",
+          "tool-pwsh",
+          "tool-jobs",
+          "tool-fs",
+          "tool-fs-search",
+          "tool-skill",
+          "tool-subagent-control",
+          "tool-subagent-list-agents",
+          "tool-subagent",
+          "tool-subagent-fork",
+          "tool-subagent-report",
+          "tool-workflow",
+          "tool-result-pruner",
+          "tool-todo",
+          "tool-goal",
+          "tool-ralph",
+          "tool-str-replace-editor",
+          "tool-web",
+          "fs-sandbox"
+        ]
+      },
+      "findings": [
+        {
+          "level": "flag",
+          "text": "⚠️ 与旧适配器文档矛盾：DSH 0.1.0-rc.6 的 headless 组合里 agent-instructions 行**是启用的**（maxBytes=65536），会按「项目根 → cwd」逐级加载 AGENTS.md / CLAUDE.md。旧文档说「没有自动加载机制」——对当前版本不成立。"
+        },
+        {
+          "level": "info",
+          "text": "--patch 叠加层已用「标记行差分 + 对照组」实测生效"
+        }
+      ],
+      "probes": [
+        {
+          "label": "dsh --help 里的 --patch",
+          "result": "extra patch-list overlay applied after the profile layer (repeatable)"
+        },
+        {
+          "label": "dsh --dump-default-config",
+          "result": "81 行"
+        },
+        {
+          "label": "dsh --patch 实际生效（标记行差分）",
+          "result": "带 --patch: 出现；不带: 未出现"
+        },
+        {
+          "label": "非数组 patch 文件必须报错",
+          "result": "符合预期"
+        },
+        {
+          "label": "目标 id 不存在只告警不报错",
+          "result": "符合预期"
+        },
+        {
+          "label": "name 与目标不符则跳过",
+          "result": "符合预期"
+        }
+      ],
+      "patchFlag": {
+        "present": true,
+        "help": "extra patch-list overlay applied after the profile layer (repeatable)"
+      },
+      "defaultRows": {
+        "count": 81,
+        "toolRows": [
+          "sandbox",
+          "sandbox-policy",
+          "bash-sandbox",
+          "pwsh-sandbox",
+          "approval",
+          "tool-bash",
+          "tool-pwsh",
+          "tool-jobs",
+          "tool-fs",
+          "tool-fs-search",
+          "tool-skill",
+          "tool-subagent-control",
+          "tool-subagent-list-agents",
+          "tool-subagent",
+          "tool-subagent-fork",
+          "tool-subagent-report",
+          "tool-workflow",
+          "tool-result-pruner",
+          "tool-todo",
+          "tool-goal",
+          "tool-ralph",
+          "tool-str-replace-editor",
+          "tool-web",
+          "fs-sandbox"
+        ]
+      },
+      "patchVerification": {
+        "appliedWithPatch": true,
+        "absentWithoutPatch": true,
+        "label": "probe-marker-14892",
+        "verdict": "verified-live"
+      },
+      "patchErrors": [
+        {
+          "label": "非数组 patch 文件必须报错",
+          "observed": true,
+          "detail": "must be a top-level YAML array"
+        },
+        {
+          "label": "目标 id 不存在只告警不报错",
+          "observed": true,
+          "detail": "not found"
+        },
+        {
+          "label": "name 与目标不符则跳过",
+          "observed": true,
+          "detail": "name mismatch"
+        }
+      ],
+      "detection": {
+        "installed": true,
+        "path": "C:\\Users\\29137\\AppData\\Roaming\\npm\\dsh.cmd",
+        "via": "PATH 上的 dsh",
+        "kind": "cli",
+        "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
+        "checkedAt": "2026-09-12"
+      }
+    },
+    "traecode-cli": {
+      "id": "traecode-cli",
+      "installed": false,
+      "version": null,
+      "ruleAutoload": {
+        "supported": true,
+        "files": [
+          ".trae/rules/"
+        ],
+        "evidence": "内置/adapters/traecode-cli.md（未在本机验证）"
+      },
+      "mechanism": {
+        "kind": "unknown",
+        "supported": false,
+        "confidence": "未查明",
+        "configFile": "未查明",
+        "note": "本机没有该引擎（统一解析器已探过），本轮跳过实测；下面保留 2026-09-11 的实测结论"
+      },
+      "findings": [
+        {
+          "level": "warn",
+          "text": "TraeCode CLI 未安装 → 机制层**未查明**，能力表按「未知」记录，本批不强推。Trae IDE 是图形界面，无法注入机制层。"
+        },
+        {
+          "level": "warn",
+          "text": "本机没有 traecode-cli（统一解析器已探过）→ 本轮**跳过实测**；结论保留 2026-09-11 的实测值，已标注「未复验」。"
+        }
+      ],
+      "probes": [
+        {
+          "label": "traecode CLI 是否在 PATH",
+          "result": "不在"
+        },
+        {
+          "label": "Trae IDE 目录是否存在",
+          "result": "存在"
+        }
+      ],
+      "traeIdePresent": true,
+      "detection": {
+        "installed": false,
+        "path": null,
+        "via": null,
+        "kind": "cli",
+        "resolver": "自定义/scripts/lib/resolve-command.mjs（经 engine-detect.mjs）",
+        "checkedAt": "2026-09-12"
+      },
+      "notRechecked": true,
+      "lastVerified": {
+        "at": "2026-09-11",
+        "version": null,
+        "mechanism": {
+          "kind": "unknown",
+          "supported": false,
+          "confidence": "未查明",
+          "configFile": "未查明"
+        },
+        "patchVerification": null,
+        "ruleAutoload": {
+          "supported": true,
+          "files": [
+            ".trae/rules/"
+          ],
+          "evidence": "内置/adapters/traecode-cli.md（未在本机验证）"
+        },
+        "desktop": null
+      }
+    }
+  },
+  "matrix": {
+    "_说明": "引擎能力矩阵（第 3 段重写）。**强制力分三档，越靠前越硬**：① hooks 强制（引擎自己的事件机制，模型绕不过）；② 命令包装强制（走 run.bat 启动时前置 自定义\\bin，模型执行命令必被计数）；③ 仅启动词（靠模型自觉 —— 历史实测弱模型违规 138 次，所以只当兜底，不当机制）。「✅」= 本机/历史真机验证过；「⚠️」= 方案就绪但未在本机复验；「❌」= 该引擎没有这个能力。",
+    "列": [
+      "规则自动读取",
+      "hooks 强制",
+      "命令包装强制(U4)",
+      "拦内置编辑工具",
+      "输出截断",
+      "上下文遥测",
+      "会话后审计(U3)",
+      "本机实测状态"
+    ],
+    "claude-code": [
+      "✅ CLAUDE.md + AGENTS.md",
+      "✅ 全套 6 事件（.claude/settings.json）",
+      "✅",
+      "✅ hooks（guard-tools）",
+      "✅ hooks（shape-output + G10）",
+      "✅ statusLine → 自主学习",
+      "✅",
+      "本轮实测在机"
+    ],
+    "claude-code-desktop": [
+      "✅ CLAUDE.md + AGENTS.md",
+      "✅ 同一套 .claude/ hooks，**但只有在项目目录里开会话才生效**",
+      "✅（经 run.bat 启动时）",
+      "✅ hooks",
+      "✅ hooks",
+      "✅ statusLine",
+      "✅",
+      "本轮实测：桌面端在机（判据 %APPDATA%/Claude）；hooks 生效条件见左列"
+    ],
+    "codex-cli": [
+      "✅ AGENTS.md（自动读取）",
+      "✅ hooks（config-verified）+ U4",
+      "✅",
+      "✅ hooks（PreToolUse 覆盖文件工具）",
+      "❌（未发现等价机制）",
+      "⚠️ 未验证",
+      "✅",
+      "本轮实测在机：C:\\Users\\29137\\AppData\\Roaming\\npm\\codex.cmd"
+    ],
+    "deepseek-harness": [
+      "✅ AGENTS.md / CLAUDE.md（agent-instructions 行实测启用）+ U2 兜底",
+      "❌ 无 hooks",
+      "✅ U4 命令包装（--patch 层已通）",
+      "⚠️ 需自写插件行",
+      "❌",
+      "❌",
+      "✅",
+      "本轮实测在机"
+    ],
+    "traecode-cli": [
+      "✅ .trae/rules/（规则文件）",
+      "❌",
+      "⚠️ 仅 U4（走 run.bat 时）",
+      "❌",
+      "❌",
+      "❌",
+      "⚠️ 未查明",
+      "本轮本机没有 traecode 命令 → skipped"
+    ],
+    "trae-ide": [
+      "✅ .trae/rules/（IDE 自己读项目规则）",
+      "❌ 图形端无法注入机制层",
+      "❌（IDE 里直接开对话不走 run.bat）",
+      "❌",
+      "❌",
+      "❌",
+      "❌",
+      "本轮实测：Trae 在机（图形端）"
+    ]
+  },
+  "unknowns": [
+    "★ 本轮本机没有 traecode-cli 的命令行（统一解析器已确认）→ 这几项**没有复验**：其结论来自 lastVerified（标注了来源日期与版本），属于「上次实测有效、本轮未能重复」的证据，不是本轮结论。",
+    "★ 规则自动加载的**生效性**没在真会话里验证过：DSH 会读 AGENTS.md 是从「默认组合里 agent-instructions 行启用 + 该插件自带文档」推出的，不是真会话实测。",
+    "TraeCode CLI 未安装 → 其机制层完全未查明（不做推测）。",
+    "Codex hooks 的 matcher 语义（匹配工具名还是命令正则）未实测，只确认了「是字符串」。",
+    "Codex hooks 的『trust 持久化』落盘位置未查（不读用户配置）。首次启用时 Codex 会要求一次信任确认。",
+    "DSH 要拦内置文件编辑工具，需要自己写一个插件行（tool-fs/tool-fs-search 是它的文件工具行名）——插件本体不在本批范围。",
+    "输出截断与上下文遥测：Codex / DSH 均未发现等价机制（不是「确认没有」，是「未发现」）。",
+    "Claude 桌面端的 hooks 生效性没有在桌面端真会话里验证过 —— 本机只确认了「桌面端装着」+「同一套 .claude/ 配置」，生效条件（必须在项目目录里开会话）来自第 2 批对 Claude Code 项目根语义的实测。"
+  ],
+  "limitations": [
+    "U4（命令包装）只对**通过 harness 启动**的会话生效；用户在 Trae IDE 里直接开对话不走 run.bat。",
+    "本批只做到「探明 + 备好配置片段」，没有把 Codex/DSH 的适配生效（那是第 7 批 U4 之后的接线活）。",
+    "Codex 与 DSH 的机制层都**没有**用真会话验证过——验证需要真实模型请求，会花钱，本批按「零额度」原则没做。",
+    "第 3 段补：Codex hooks 的配置片段**合法性**已由 codex 0.153.4 的 --strict-config 实测接受，但「真会话里 hooks 真的被调用」仍未验证（要花额度）；自检台与验收报告都按「配置合法 / 未跑真会话」两级如实标注。"
+  ]
+}

@@ -1,0 +1,61 @@
+# ════════════════════════════════════════════════════════════
+# Codex CLI hooks —— 本 harness 的机制层适配（第 6 批 · F11）
+#
+# ★ 把下面 [hooks] 段**合并**进 ~/.codex/config.toml（不是覆盖整个文件）。
+#   若该文件已有 [hooks] 段，把事件数组里的元素追加进去。
+#
+# ★ 请把 <harness> 换成工作区的绝对路径，例如
+#     C:\Users\29137\Desktop\项目2\AI自动化工具配置\自建\脚本\General-Project-Workshop
+#   注意：TOML 里 Windows 路径要么用单引号字面串（如本文件），
+#   要么把每个反斜杠写成 \\（双引号串里 '\' 是转义符，会报错）。
+#
+# ★ 首次启用 Codex 会要求一次 hooks 信任确认（trust 持久化）。
+#   跳过开关：codex --dangerously-bypass-hook-trust
+#
+# ★ 本片段**整体合法性已实测**（两级证据，分开记）：
+#   ① 第 6 批：probe-engines.mjs 差分探测（对照组 + 实验组，见 引擎能力表.json 的 probes）；
+#   ② 第 3 段 2026-09-12：把**本文件原样**（替换 <harness> 后）交给 codex **0.153.4**
+#      跑 `--strict-config`，判定为合法配置；对照组（不存在的键）按预期报
+#      「unknown configuration field」→ 差分法前提成立，结论有效。
+#   ★ 仍**没有**在真实会话里跑过 —— 真会话要花钱，按零额度原则未做。
+#     所以 hook-guard.mjs 的第一职责仍是**协议侦察**：把 stdin 落到
+#     <harness>\state\codex-probe\stdin.jsonl（第 3 段起不再写进本交付目录）。
+#     第一次启用后先看那个文件确认字段名，再依赖它的拦截结论。
+# ════════════════════════════════════════════════════════════
+
+[hooks]
+
+# ── 拦 shell 禁用命令（对应 Claude Code 的 guard-bash.mjs）──
+# matcher 只确认了「是字符串」；它匹配工具名还是命令正则，未实测。
+PreToolUse = [
+  { matcher = 'Bash', hooks = [ { type = 'command', command = 'node "<harness>\自定义\引擎适配\codex\hook-guard.mjs"', timeout = 10 } ] },
+  { matcher = 'shell', hooks = [ { type = 'command', command = 'node "<harness>\自定义\引擎适配\codex\hook-guard.mjs"', timeout = 10 } ] },
+]
+
+# ── 会话开始注入硬规则（对应 Claude Code 的 inject-rules.mjs）──
+# 留空即「未启用」；填法同上：
+# SessionStart = [
+#   { hooks = [ { type = 'command', command = 'node "<harness>\自定义\引擎适配\codex\hook-inject-rules.mjs"', timeout = 10 } ] },
+# ]
+
+# ── 收尾写 HANDOFF（对应 Claude Code 的 on-stop.mjs）──
+# Stop = [
+#   { hooks = [ { type = 'command', command = 'node "<harness>\自定义\引擎适配\codex\hook-on-stop.mjs"', timeout = 10 } ] },
+# ]
+
+# ── 压缩前保留指令（对应 Claude Code 的 compact-instructions.mjs）──
+# PreCompact = [
+#   { hooks = [ { type = 'command', command = 'node "<harness>\自定义\引擎适配\codex\hook-compact.mjs"', timeout = 10 } ] },
+# ]
+
+# ════════════════════════════════════════════════════════════
+# 备注：Codex 的处理器类型有 4 种（引擎报出的合法取值）：
+#   command  —— 确定性脚本。★ 本 harness 只用这一种。
+#   mcp_tool —— 调 MCP 工具
+#   prompt   —— 让模型做判断 ★ 不用：违反原则 1「机制优先于提示词」
+#   agent    —— 起子代理     ★ 不用：同上
+#
+# 可用字段（command 型，共 6 个）：
+#   command / commandWindows / timeout(u64 秒) / async(bool) /
+#   statusMessage(string) / additionalContextLimit(usize)
+# ════════════════════════════════════════════════════════════
